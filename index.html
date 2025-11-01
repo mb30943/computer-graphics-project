@@ -1,12 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Findzzer 3D Event Explorer</title>
-  <link rel="stylesheet" href="./styles/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Findzzer 3D Event Explorer</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <script type="module" src="./src/main.js"></script>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <p>Loading Findzzer 3D Event Explorer...</p>
+    </div>
+
+    <!-- Info Panel -->
+    <div id="info-panel">
+        <h1>Findzzer 3D Event Explorer</h1>
+        <p>Navigate: Mouse drag | Zoom: Scroll | Click: Select event</p>
+    </div>
+
+    <!-- Event Details Popup -->
+    <div id="event-popup" class="hidden">
+        <button id="close-popup" class="close-btn">&times;</button>
+        <div id="popup-content">
+            <h2 id="event-name"></h2>
+            <p id="event-date"></p>
+            <p id="event-category"></p>
+            <p id="event-description"></p>
+            <button id="event-action-btn" class="action-btn">View Details</button>
+        </div>
+    </div>
+
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
+    
+    <!-- GLTFLoader -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.152.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- Application Modules -->
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
