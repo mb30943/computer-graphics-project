@@ -3,7 +3,7 @@
 // Camera Controls Module
 // ============================================
 import * as THREE from 'three';
-
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 export class CameraControls {
     constructor(camera, renderer) {
         this.camera = camera;
@@ -17,7 +17,7 @@ export class CameraControls {
 
     // Setup OrbitControls for camera navigation
     setupControls() {
-        this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         
         // ============================================
         // CONTROL SETTINGS
