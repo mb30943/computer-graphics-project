@@ -133,13 +133,19 @@ export class SkopjeLoader {
             this.scene.add(mesh);
             this.buildingMeshes.push(mesh);
 
-            // 🧭 Compute center of building from bounding box
+            // 🧭 Calculate label position
+            // Get the center of the building footprint
             geometry.computeBoundingBox();
             const bbox = geometry.boundingBox;
             const buildingCenter = new THREE.Vector3();
             bbox.getCenter(buildingCenter);
+
+            // Transform to world coordinates
             mesh.localToWorld(buildingCenter);
-            buildingCenter.y = bbox.max.y -5; // slightly above the top
+
+            // The building height in world space is the extruded depth
+            // because the mesh is rotated 90 degrees on X-axis
+            buildingCenter.y = height + 1.5; // Use actual extrusion height + offset
 
             // 🎈 Add label (above correct spot)
             if (props.name && props.amenity && [
@@ -164,13 +170,30 @@ export class SkopjeLoader {
 
         const centerX = size / 2;
         const centerY = size / 2;
-        const bubbleWidth = 300;
-        const bubbleHeight = 120;
-        const cornerRadius = 40;
+        const bubbleWidth = 320;
+        const bubbleHeight = 100;
+        const cornerRadius = 50;
 
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        // Modern gradient background
+        const gradient = ctx.createLinearGradient(
+            centerX - bubbleWidth / 2,
+            centerY - bubbleHeight / 2,
+            centerX + bubbleWidth / 2,
+            centerY + bubbleHeight / 2
+        );
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        gradient.addColorStop(1, 'rgba(245, 245, 245, 0.95)');
+
+        // Shadow for depth
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 20;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 5;
+
+        // Draw rounded rectangle bubble
+        ctx.fillStyle = gradient;
         ctx.strokeStyle = `#${color.getHexString()}`;
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 5;
 
         ctx.beginPath();
         ctx.moveTo(centerX - bubbleWidth / 2 + cornerRadius, centerY - bubbleHeight / 2);
@@ -186,26 +209,47 @@ export class SkopjeLoader {
         ctx.fill();
         ctx.stroke();
 
-        // Pin
+        // Reset shadow for pin
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Pin pointing down
         ctx.beginPath();
         ctx.moveTo(centerX, centerY + bubbleHeight / 2);
-        ctx.lineTo(centerX - 15, centerY + bubbleHeight / 2 + 30);
-        ctx.lineTo(centerX + 15, centerY + bubbleHeight / 2 + 30);
+        ctx.lineTo(centerX - 12, centerY + bubbleHeight / 2 + 25);
+        ctx.lineTo(centerX + 12, centerY + bubbleHeight / 2 + 25);
         ctx.closePath();
-        ctx.fillStyle = `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 0.8)`;
+        ctx.fillStyle = `#${color.getHexString()}`;
         ctx.fill();
 
-        // Text
-        ctx.font = 'Bold 48px Arial';
-        ctx.fillStyle = `#${color.getHexString()}`;
+        // Text with better styling
+        ctx.fillStyle = '#2c3e50'; // Dark gray for better readability
+        ctx.font = 'bold 48px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+
+        // Add subtle text shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
         ctx.fillText(text, centerX, centerY);
 
         const texture = new THREE.CanvasTexture(canvas);
-        const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-        const sprite = new THREE.Sprite(material);
-        sprite.scale.set(18, 13, 1);
+        texture.needsUpdate = true;
+
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false
+        });
+
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(8, 8, 1);
 
         return sprite;
     }
