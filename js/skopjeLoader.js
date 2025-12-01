@@ -4,6 +4,7 @@ export class SkopjeLoader {
     constructor(scene) {
         this.scene = scene;
         this.buildingMeshes = [];
+        this.venuePositions = []; // Track positions of cafes, bars, restaurants
         this.cityCenter = new THREE.Vector3(0, 0, 0);
 
         // Procedural window texture
@@ -139,9 +140,11 @@ export class SkopjeLoader {
             const buildingCenter = new THREE.Vector3();
             bbox.getCenter(buildingCenter);
             mesh.localToWorld(buildingCenter);
-            buildingCenter.y = height + 1.5;
 
-            // 🎈 Add label
+            // Position label clearly on top of the building
+            buildingCenter.y = height + 3.5; // Higher offset for clear visibility
+
+            // 🎈 Add label ONLY for cafes, bars, restaurants, etc.
             if (props.name && props.amenity && [
                 "bar", "cafe", "restaurant", "pub", "nightclub", "disco", "cinema", "theatre", "events_venue"
             ].includes(props.amenity.toLowerCase())) {
@@ -164,20 +167,20 @@ export class SkopjeLoader {
 
         const centerX = size / 2;
         const centerY = size / 2;
-        const bubbleWidth = 340;
-        const bubbleHeight = 90;
-        const cornerRadius = 45;
+        const bubbleWidth = 360;
+        const bubbleHeight = 110;
+        const cornerRadius = 55;
 
         // Clear canvas
         ctx.clearRect(0, 0, size, size);
 
-        // Outer glow effect
-        ctx.shadowColor = `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 0.4)`;
-        ctx.shadowBlur = 30;
+        // Outer glow effect for visibility
+        ctx.shadowColor = `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 0.6)`;
+        ctx.shadowBlur = 40;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
 
-        // Glassmorphism background with vibrant gradient
+        // Vibrant gradient background
         const gradient = ctx.createLinearGradient(
             centerX - bubbleWidth / 2,
             centerY - bubbleHeight / 2,
@@ -185,16 +188,16 @@ export class SkopjeLoader {
             centerY + bubbleHeight / 2
         );
 
-        // Create vibrant gradient based on building color
-        const r = Math.min(255, color.r * 255 + 50);
-        const g = Math.min(255, color.g * 255 + 50);
-        const b = Math.min(255, color.b * 255 + 50);
+        // Create vibrant gradient
+        const r = Math.min(255, color.r * 255 + 60);
+        const g = Math.min(255, color.g * 255 + 60);
+        const b = Math.min(255, color.b * 255 + 60);
 
-        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.95)`);
-        gradient.addColorStop(0.5, `rgba(255, 255, 255, 0.9)`);
-        gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.85)`);
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.98)`);
+        gradient.addColorStop(0.5, `rgba(255, 255, 255, 0.95)`);
+        gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.98)`);
 
-        // Draw main bubble
+        // Draw floating badge (no pin)
         ctx.fillStyle = gradient;
         ctx.beginPath();
         ctx.moveTo(centerX - bubbleWidth / 2 + cornerRadius, centerY - bubbleHeight / 2);
@@ -220,58 +223,33 @@ export class SkopjeLoader {
             centerX + bubbleWidth / 2,
             centerY + bubbleHeight / 2
         );
-        borderGradient.addColorStop(0, `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 0.8)`);
-        borderGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)');
-        borderGradient.addColorStop(1, `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 0.8)`);
+        borderGradient.addColorStop(0, `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 1)`);
+        borderGradient.addColorStop(0.5, 'rgba(255, 255, 255, 1)');
+        borderGradient.addColorStop(1, `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 1)`);
 
         ctx.strokeStyle = borderGradient;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 5;
         ctx.stroke();
 
         // Inner highlight
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(centerX - bubbleWidth / 2 + cornerRadius + 5, centerY - bubbleHeight / 2 + 3);
-        ctx.lineTo(centerX + bubbleWidth / 2 - cornerRadius - 5, centerY - bubbleHeight / 2 + 3);
+        ctx.moveTo(centerX - bubbleWidth / 2 + cornerRadius + 8, centerY - bubbleHeight / 2 + 5);
+        ctx.lineTo(centerX + bubbleWidth / 2 - cornerRadius - 8, centerY - bubbleHeight / 2 + 5);
         ctx.stroke();
-
-        // Elegant pin
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        ctx.shadowBlur = 10;
-        ctx.shadowOffsetY = 3;
-
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY + bubbleHeight / 2);
-        ctx.lineTo(centerX - 10, centerY + bubbleHeight / 2 + 20);
-        ctx.lineTo(centerX + 10, centerY + bubbleHeight / 2 + 20);
-        ctx.closePath();
-
-        const pinGradient = ctx.createLinearGradient(
-            centerX, centerY + bubbleHeight / 2,
-            centerX, centerY + bubbleHeight / 2 + 20
-        );
-        pinGradient.addColorStop(0, `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 1)`);
-        pinGradient.addColorStop(1, `rgba(${color.r * 255 * 0.7}, ${color.g * 255 * 0.7}, ${color.b * 255 * 0.7}, 1)`);
-
-        ctx.fillStyle = pinGradient;
-        ctx.fill();
-
-        // Reset shadow for text
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
 
         // Modern text
         ctx.fillStyle = '#1a1a1a';
-        ctx.font = 'bold 52px "Segoe UI", Arial, sans-serif';
+        ctx.font = 'bold 56px "Segoe UI", Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-        ctx.shadowBlur = 3;
-        ctx.shadowOffsetY = 1;
+        // Strong text shadow
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 2;
 
         ctx.fillText(text, centerX, centerY);
 
@@ -281,9 +259,9 @@ export class SkopjeLoader {
 
         const shineGradient = ctx.createLinearGradient(
             centerX, centerY - bubbleHeight / 2,
-            centerX, centerY - bubbleHeight / 2 + 30
+            centerX, centerY - bubbleHeight / 2 + 35
         );
-        shineGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+        shineGradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
         shineGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
         ctx.fillStyle = shineGradient;
@@ -291,8 +269,8 @@ export class SkopjeLoader {
         ctx.moveTo(centerX - bubbleWidth / 2 + cornerRadius, centerY - bubbleHeight / 2);
         ctx.lineTo(centerX + bubbleWidth / 2 - cornerRadius, centerY - bubbleHeight / 2);
         ctx.quadraticCurveTo(centerX + bubbleWidth / 2, centerY - bubbleHeight / 2, centerX + bubbleWidth / 2, centerY - bubbleHeight / 2 + cornerRadius);
-        ctx.lineTo(centerX + bubbleWidth / 2, centerY - bubbleHeight / 2 + 30);
-        ctx.lineTo(centerX - bubbleWidth / 2, centerY - bubbleHeight / 2 + 30);
+        ctx.lineTo(centerX + bubbleWidth / 2, centerY - bubbleHeight / 2 + 35);
+        ctx.lineTo(centerX - bubbleWidth / 2, centerY - bubbleHeight / 2 + 35);
         ctx.lineTo(centerX - bubbleWidth / 2, centerY - bubbleHeight / 2 + cornerRadius);
         ctx.quadraticCurveTo(centerX - bubbleWidth / 2, centerY - bubbleHeight / 2, centerX - bubbleWidth / 2 + cornerRadius, centerY - bubbleHeight / 2);
         ctx.closePath();
@@ -306,11 +284,11 @@ export class SkopjeLoader {
             transparent: true,
             depthTest: false,
             depthWrite: false,
-            opacity: 0.98
+            opacity: 1.0
         });
 
         const sprite = new THREE.Sprite(spriteMaterial);
-        sprite.scale.set(8, 8, 1);
+        sprite.scale.set(10, 10, 1); // Larger for better visibility
 
         return sprite;
     }

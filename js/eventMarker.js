@@ -112,10 +112,10 @@ export class EventMarker {
         this.label.name = "label";
         this.group.add(this.label);
 
-        // Set group position in world space
+        // Set group position in world space - elevated for visibility
         this.group.position.set(
             this.data.position.x,
-            this.data.position.y,
+            this.data.position.y + 5, // Elevated to appear on top of buildings
             this.data.position.z
         );
 
