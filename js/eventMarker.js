@@ -17,7 +17,7 @@ export class EventMarker {
         this.isSelected = false;
         this.originalScale = 1;
         this.pulseAmplitude = 0.2;
-        
+
         this.createMarker();
         this.addToScene();
     }
@@ -105,6 +105,13 @@ export class EventMarker {
         this.cone.name = "cone";
         this.group.add(this.cone);
 
+        // Text Label (Sprite)
+        this.label = this.createTextLabel(this.data.name);
+        this.label.position.y = 2.5;
+        this.label.scale.set(0, 0, 0); // Initially hidden
+        this.label.name = "label";
+        this.group.add(this.label);
+
         // Set group position in world space
         this.group.position.set(
             this.data.position.x,
@@ -118,6 +125,64 @@ export class EventMarker {
             isEventMarker: true,
             markerInstance: this
         };
+    }
+
+    createTextLabel(text) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        const fontSize = 48;
+        const fontFace = 'Arial';
+
+        // Measure text width
+        context.font = `Bold ${fontSize}px ${fontFace}`;
+        const textWidth = context.measureText(text).width;
+
+        // Resize canvas to fit text
+        canvas.width = textWidth + 40;
+        canvas.height = fontSize + 40;
+
+        // Draw background
+        context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        context.strokeStyle = `#${new THREE.Color(this.data.color).getHexString()}`;
+        context.lineWidth = 4;
+
+        // Rounded rectangle
+        const x = 2, y = 2, w = canvas.width - 4, h = canvas.height - 4, r = 10;
+        context.beginPath();
+        context.moveTo(x + r, y);
+        context.lineTo(x + w - r, y);
+        context.quadraticCurveTo(x + w, y, x + w, y + r);
+        context.lineTo(x + w, y + h - r);
+        context.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        context.lineTo(x + r, y + h);
+        context.quadraticCurveTo(x, y + h, x, y + h - r);
+        context.lineTo(x, y + r);
+        context.quadraticCurveTo(x, y, x + r, y);
+        context.closePath();
+        context.fill();
+        context.stroke();
+
+        // Draw text
+        context.font = `Bold ${fontSize}px ${fontFace}`;
+        context.fillStyle = 'white';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+            depthTest: false,
+            depthWrite: false
+        });
+
+        const sprite = new THREE.Sprite(material);
+        // Scale sprite based on aspect ratio
+        const scale = 3;
+        sprite.scale.set(scale * (canvas.width / canvas.height), scale, 1);
+
+        return sprite;
     }
 
     addToScene() {
@@ -152,9 +217,18 @@ export class EventMarker {
             this.marker.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
             this.light.intensity = Math.min(lightIntensity * 1.5, 4);
             this.cone.scale.lerp(new THREE.Vector3(1.2, 1.2, 1.2), 0.1);
+
+            // Show label
+            const labelTargetScale = 3; // Base height scale
+            const aspectRatio = this.label.material.map.image.width / this.label.material.map.image.height;
+            this.label.scale.lerp(new THREE.Vector3(labelTargetScale * aspectRatio, labelTargetScale, 1), 0.15);
+            this.label.position.y = 2.5 + floatHeight;
         } else {
             this.marker.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
             this.cone.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
+
+            // Hide label
+            this.label.scale.lerp(new THREE.Vector3(0, 0, 0), 0.2);
         }
     }
 
