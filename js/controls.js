@@ -235,7 +235,7 @@ export class CameraControls {
 
         if (this.isStreetView) {
             // Switch to Street View
-            console.log("Switching to Street View - Use WASD to move!");
+            console.log("Switching to Street View - Use WASD to move and mouse to look around!");
 
             // Animate camera to ground level
             const currentTarget = this.controls.target.clone();
@@ -247,11 +247,14 @@ export class CameraControls {
 
             this.animateToPosition(streetPosition, 1500);
 
-            // Adjust controls for street view
-            this.controls.maxPolarAngle = Math.PI / 1.8; // Allow looking up slightly more
-            this.controls.minDistance = 1;
-            this.controls.maxDistance = 30;
-            this.controls.enablePan = true;
+            // Adjust controls for first-person street view
+            this.controls.maxPolarAngle = Math.PI / 1.5; // Allow looking up more
+            this.controls.minPolarAngle = Math.PI / 3; // Prevent looking too far down
+            this.controls.minDistance = 0.1; // Very close for first-person feel
+            this.controls.maxDistance = 5; // Limited zoom in street view
+            this.controls.enablePan = false; // Disable panning for cleaner FPS feel
+            this.controls.rotateSpeed = 0.5; // Faster rotation for responsive mouse look
+            this.controls.dampingFactor = 0.1; // Less damping for snappier response
 
         } else {
             // Switch to Bird's Eye View
@@ -261,11 +264,14 @@ export class CameraControls {
             const birdEyePosition = new THREE.Vector3(30, 25, 30);
             this.animateToPosition(birdEyePosition, 1500);
 
-            // Reset controls
+            // Reset controls to orbital view
             this.controls.maxPolarAngle = Math.PI / 2.2;
+            this.controls.minPolarAngle = 0;
             this.controls.minDistance = 10;
             this.controls.maxDistance = 100;
             this.controls.enablePan = false;
+            this.controls.rotateSpeed = 1.0; // Default rotation speed
+            this.controls.dampingFactor = 0.05; // Default damping
             this.controls.target.set(0, 0, 0);
         }
 
