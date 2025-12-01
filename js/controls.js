@@ -23,6 +23,11 @@ export class CameraControls {
         };
         this.moveSpeed = 0.3;
 
+        // Collision detection
+        this.collisionObjects = [];
+        this.collisionRaycaster = new THREE.Raycaster();
+        this.collisionDistance = 1.5; // Minimum distance from obstacles
+
         this.setupControls();
         this.setupKeyboardControls();
     }
@@ -113,17 +118,17 @@ export class CameraControls {
                 // Get right vector (left/right strafe)
                 right.crossVectors(this.camera.up, direction).normalize();
 
-                // Apply movement based on key states
-                if (this.moveState.forward) {
+                // Apply movement based on key states WITH collision detection
+                if (this.moveState.forward && !this.checkCollision(direction)) {
                     this.camera.position.addScaledVector(direction, this.moveSpeed);
                 }
-                if (this.moveState.backward) {
+                if (this.moveState.backward && !this.checkCollision(direction.clone().negate())) {
                     this.camera.position.addScaledVector(direction, -this.moveSpeed);
                 }
-                if (this.moveState.left) {
+                if (this.moveState.left && !this.checkCollision(right)) {
                     this.camera.position.addScaledVector(right, this.moveSpeed);
                 }
-                if (this.moveState.right) {
+                if (this.moveState.right && !this.checkCollision(right.clone().negate())) {
                     this.camera.position.addScaledVector(right, -this.moveSpeed);
                 }
 
@@ -136,6 +141,30 @@ export class CameraControls {
 
             this.controls.update();
         }
+    }
+
+    // Check for collisions in a given direction
+    checkCollision(direction) {
+        if (this.collisionObjects.length === 0) return false;
+
+        // Set raycaster from camera position in the movement direction
+        this.collisionRaycaster.set(this.camera.position, direction);
+
+        // Check for intersections with collision objects
+        const intersections = this.collisionRaycaster.intersectObjects(this.collisionObjects, false);
+
+        // If there's an intersection within collision distance, block movement
+        if (intersections.length > 0 && intersections[0].distance < this.collisionDistance) {
+            return true; // Collision detected
+        }
+
+        return false; // No collision
+    }
+
+    // Set collision objects (buildings, obstacles, etc.)
+    setCollisionObjects(objects) {
+        this.collisionObjects = objects;
+        console.log(`Collision detection enabled with ${objects.length} objects`);
     }
 
     // Animate camera to a specific position with easing

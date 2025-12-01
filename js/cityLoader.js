@@ -38,5 +38,10 @@ export class CityLoader {
         this.scene.add(skybox);
     }
 
-    dispose() {}
+    // Get building meshes for collision detection
+    getBuildingMeshes() {
+        return this.skopjeLoader.buildingMeshes;
+    }
+
+    dispose() { }
 }

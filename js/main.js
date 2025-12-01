@@ -72,6 +72,13 @@ class FindzzerApp {
         // Add keyboard controls
         this.setupKeyboardControls();
 
+        // Setup collision detection with building meshes
+        const cityLoader = this.sceneManager.getCityLoader();
+        if (cityLoader) {
+            const buildingMeshes = cityLoader.getBuildingMeshes();
+            this.cameraControls.setCollisionObjects(buildingMeshes);
+        }
+
         // Hide loading screen
         this.hideLoadingScreen();
 
