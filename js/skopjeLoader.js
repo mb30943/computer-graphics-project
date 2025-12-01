@@ -134,20 +134,14 @@ export class SkopjeLoader {
             this.buildingMeshes.push(mesh);
 
             // 🧭 Calculate label position
-            // Get the center of the building footprint
             geometry.computeBoundingBox();
             const bbox = geometry.boundingBox;
             const buildingCenter = new THREE.Vector3();
             bbox.getCenter(buildingCenter);
-
-            // Transform to world coordinates
             mesh.localToWorld(buildingCenter);
+            buildingCenter.y = height + 1.5;
 
-            // The building height in world space is the extruded depth
-            // because the mesh is rotated 90 degrees on X-axis
-            buildingCenter.y = height + 1.5; // Use actual extrusion height + offset
-
-            // 🎈 Add label (above correct spot)
+            // 🎈 Add label
             if (props.name && props.amenity && [
                 "bar", "cafe", "restaurant", "pub", "nightclub", "disco", "cinema", "theatre", "events_venue"
             ].includes(props.amenity.toLowerCase())) {
@@ -170,31 +164,38 @@ export class SkopjeLoader {
 
         const centerX = size / 2;
         const centerY = size / 2;
-        const bubbleWidth = 320;
-        const bubbleHeight = 100;
-        const cornerRadius = 50;
+        const bubbleWidth = 340;
+        const bubbleHeight = 90;
+        const cornerRadius = 45;
 
-        // Modern gradient background
+        // Clear canvas
+        ctx.clearRect(0, 0, size, size);
+
+        // Outer glow effect
+        ctx.shadowColor = `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 0.4)`;
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Glassmorphism background with vibrant gradient
         const gradient = ctx.createLinearGradient(
             centerX - bubbleWidth / 2,
             centerY - bubbleHeight / 2,
             centerX + bubbleWidth / 2,
             centerY + bubbleHeight / 2
         );
-        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-        gradient.addColorStop(1, 'rgba(245, 245, 245, 0.95)');
 
-        // Shadow for depth
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-        ctx.shadowBlur = 20;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 5;
+        // Create vibrant gradient based on building color
+        const r = Math.min(255, color.r * 255 + 50);
+        const g = Math.min(255, color.g * 255 + 50);
+        const b = Math.min(255, color.b * 255 + 50);
 
-        // Draw rounded rectangle bubble
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.95)`);
+        gradient.addColorStop(0.5, `rgba(255, 255, 255, 0.9)`);
+        gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.85)`);
+
+        // Draw main bubble
         ctx.fillStyle = gradient;
-        ctx.strokeStyle = `#${color.getHexString()}`;
-        ctx.lineWidth = 5;
-
         ctx.beginPath();
         ctx.moveTo(centerX - bubbleWidth / 2 + cornerRadius, centerY - bubbleHeight / 2);
         ctx.lineTo(centerX + bubbleWidth / 2 - cornerRadius, centerY - bubbleHeight / 2);
@@ -207,36 +208,95 @@ export class SkopjeLoader {
         ctx.quadraticCurveTo(centerX - bubbleWidth / 2, centerY - bubbleHeight / 2, centerX - bubbleWidth / 2 + cornerRadius, centerY - bubbleHeight / 2);
         ctx.closePath();
         ctx.fill();
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+
+        // Premium border
+        const borderGradient = ctx.createLinearGradient(
+            centerX - bubbleWidth / 2,
+            centerY - bubbleHeight / 2,
+            centerX + bubbleWidth / 2,
+            centerY + bubbleHeight / 2
+        );
+        borderGradient.addColorStop(0, `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 0.8)`);
+        borderGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)');
+        borderGradient.addColorStop(1, `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 0.8)`);
+
+        ctx.strokeStyle = borderGradient;
+        ctx.lineWidth = 4;
         ctx.stroke();
 
-        // Reset shadow for pin
+        // Inner highlight
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(centerX - bubbleWidth / 2 + cornerRadius + 5, centerY - bubbleHeight / 2 + 3);
+        ctx.lineTo(centerX + bubbleWidth / 2 - cornerRadius - 5, centerY - bubbleHeight / 2 + 3);
+        ctx.stroke();
+
+        // Elegant pin
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetY = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY + bubbleHeight / 2);
+        ctx.lineTo(centerX - 10, centerY + bubbleHeight / 2 + 20);
+        ctx.lineTo(centerX + 10, centerY + bubbleHeight / 2 + 20);
+        ctx.closePath();
+
+        const pinGradient = ctx.createLinearGradient(
+            centerX, centerY + bubbleHeight / 2,
+            centerX, centerY + bubbleHeight / 2 + 20
+        );
+        pinGradient.addColorStop(0, `rgba(${color.r * 255}, ${color.g * 255}, ${color.b * 255}, 1)`);
+        pinGradient.addColorStop(1, `rgba(${color.r * 255 * 0.7}, ${color.g * 255 * 0.7}, ${color.b * 255 * 0.7}, 1)`);
+
+        ctx.fillStyle = pinGradient;
+        ctx.fill();
+
+        // Reset shadow for text
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
 
-        // Pin pointing down
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY + bubbleHeight / 2);
-        ctx.lineTo(centerX - 12, centerY + bubbleHeight / 2 + 25);
-        ctx.lineTo(centerX + 12, centerY + bubbleHeight / 2 + 25);
-        ctx.closePath();
-        ctx.fillStyle = `#${color.getHexString()}`;
-        ctx.fill();
-
-        // Text with better styling
-        ctx.fillStyle = '#2c3e50'; // Dark gray for better readability
-        ctx.font = 'bold 48px Arial, sans-serif';
+        // Modern text
+        ctx.fillStyle = '#1a1a1a';
+        ctx.font = 'bold 52px "Segoe UI", Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // Add subtle text shadow
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
-        ctx.shadowBlur = 2;
-        ctx.shadowOffsetX = 1;
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+        ctx.shadowBlur = 3;
         ctx.shadowOffsetY = 1;
 
         ctx.fillText(text, centerX, centerY);
+
+        // Shine effect
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+
+        const shineGradient = ctx.createLinearGradient(
+            centerX, centerY - bubbleHeight / 2,
+            centerX, centerY - bubbleHeight / 2 + 30
+        );
+        shineGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+        shineGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        ctx.fillStyle = shineGradient;
+        ctx.beginPath();
+        ctx.moveTo(centerX - bubbleWidth / 2 + cornerRadius, centerY - bubbleHeight / 2);
+        ctx.lineTo(centerX + bubbleWidth / 2 - cornerRadius, centerY - bubbleHeight / 2);
+        ctx.quadraticCurveTo(centerX + bubbleWidth / 2, centerY - bubbleHeight / 2, centerX + bubbleWidth / 2, centerY - bubbleHeight / 2 + cornerRadius);
+        ctx.lineTo(centerX + bubbleWidth / 2, centerY - bubbleHeight / 2 + 30);
+        ctx.lineTo(centerX - bubbleWidth / 2, centerY - bubbleHeight / 2 + 30);
+        ctx.lineTo(centerX - bubbleWidth / 2, centerY - bubbleHeight / 2 + cornerRadius);
+        ctx.quadraticCurveTo(centerX - bubbleWidth / 2, centerY - bubbleHeight / 2, centerX - bubbleWidth / 2 + cornerRadius, centerY - bubbleHeight / 2);
+        ctx.closePath();
+        ctx.fill();
 
         const texture = new THREE.CanvasTexture(canvas);
         texture.needsUpdate = true;
@@ -245,7 +305,8 @@ export class SkopjeLoader {
             map: texture,
             transparent: true,
             depthTest: false,
-            depthWrite: false
+            depthWrite: false,
+            opacity: 0.98
         });
 
         const sprite = new THREE.Sprite(spriteMaterial);
