@@ -14,7 +14,17 @@ export class CameraControls {
         this.animationSpeed = 1;
         this.isStreetView = false;
 
+        // Keyboard movement state
+        this.moveState = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false
+        };
+        this.moveSpeed = 0.3;
+
         this.setupControls();
+        this.setupKeyboardControls();
     }
 
     // Setup OrbitControls for camera navigation
@@ -48,9 +58,82 @@ export class CameraControls {
         this.controls.update();
     }
 
+    // Setup keyboard controls for WASD movement
+    setupKeyboardControls() {
+        window.addEventListener('keydown', (e) => {
+            if (!this.isStreetView) return; // Only allow movement in street view
+
+            switch (e.key.toLowerCase()) {
+                case 'w':
+                    this.moveState.forward = true;
+                    break;
+                case 's':
+                    this.moveState.backward = true;
+                    break;
+                case 'a':
+                    this.moveState.left = true;
+                    break;
+                case 'd':
+                    this.moveState.right = true;
+                    break;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            switch (e.key.toLowerCase()) {
+                case 'w':
+                    this.moveState.forward = false;
+                    break;
+                case 's':
+                    this.moveState.backward = false;
+                    break;
+                case 'a':
+                    this.moveState.left = false;
+                    break;
+                case 'd':
+                    this.moveState.right = false;
+                    break;
+            }
+        });
+    }
+
     // Update controls (call in animation loop)
     update() {
         if (this.controls) {
+            // Handle keyboard movement in street view
+            if (this.isStreetView) {
+                const direction = new THREE.Vector3();
+                const right = new THREE.Vector3();
+
+                // Get camera direction (forward/backward)
+                this.camera.getWorldDirection(direction);
+                direction.y = 0; // Keep movement horizontal
+                direction.normalize();
+
+                // Get right vector (left/right strafe)
+                right.crossVectors(this.camera.up, direction).normalize();
+
+                // Apply movement based on key states
+                if (this.moveState.forward) {
+                    this.camera.position.addScaledVector(direction, this.moveSpeed);
+                }
+                if (this.moveState.backward) {
+                    this.camera.position.addScaledVector(direction, -this.moveSpeed);
+                }
+                if (this.moveState.left) {
+                    this.camera.position.addScaledVector(right, this.moveSpeed);
+                }
+                if (this.moveState.right) {
+                    this.camera.position.addScaledVector(right, -this.moveSpeed);
+                }
+
+                // Update orbit controls target to follow camera
+                if (this.moveState.forward || this.moveState.backward ||
+                    this.moveState.left || this.moveState.right) {
+                    this.controls.target.copy(this.camera.position).add(direction);
+                }
+            }
+
             this.controls.update();
         }
     }
@@ -152,7 +235,7 @@ export class CameraControls {
 
         if (this.isStreetView) {
             // Switch to Street View
-            console.log("Switching to Street View");
+            console.log("Switching to Street View - Use WASD to move!");
 
             // Animate camera to ground level
             const currentTarget = this.controls.target.clone();

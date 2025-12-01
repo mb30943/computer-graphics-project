@@ -137,7 +137,7 @@ class FindzzerApp {
                 if (selectedMarker) {
                     const eventData = selectedMarker.getEventData();
                     console.log('Opening event:', eventData.name);
-                    alert(`Opening details for: ${eventData.name}\n\nIn a real app, this would open the full event details.`);
+                    alert(`Opening details for: ${eventData.name}\\n\\nIn a real app, this would open the full event details.`);
                 }
             });
         }
@@ -150,6 +150,23 @@ class FindzzerApp {
                 this.hideEventPopup();
             }
         });
+
+        // ============================================
+        // TOGGLE VIEW BUTTON
+        // ============================================
+        const toggleViewBtn = document.getElementById('toggle-view-btn');
+        const viewModeHint = document.getElementById('view-mode-hint');
+        if (toggleViewBtn) {
+            toggleViewBtn.addEventListener('click', () => {
+                const isStreetView = this.cameraControls.toggleViewMode();
+                toggleViewBtn.textContent = isStreetView ? 'Toggle Bird\'s Eye View' : 'Toggle Street View';
+
+                // Show/hide WASD hint
+                if (viewModeHint) {
+                    viewModeHint.style.display = isStreetView ? 'block' : 'none';
+                }
+            });
+        }
     }
 
     // Setup keyboard controls
@@ -160,11 +177,12 @@ class FindzzerApp {
                     // Reset camera
                     this.cameraControls.resetCamera();
                     break;
-                case 'a':
-                    // Toggle auto-rotate
-                    const controls = this.cameraControls.getControls();
-                    controls.autoRotate = !controls.autoRotate;
-                    console.log('Auto-rotate:', controls.autoRotate ? 'ON' : 'OFF');
+                case 'v':
+                    // Toggle view mode with V key
+                    const toggleViewBtn = document.getElementById('toggle-view-btn');
+                    if (toggleViewBtn) {
+                        toggleViewBtn.click();
+                    }
                     break;
                 case 'h':
                     // Show help
@@ -173,7 +191,8 @@ class FindzzerApp {
                     console.log('- Mouse scroll: Zoom in/out');
                     console.log('- Click: Select event marker');
                     console.log('- R key: Reset camera');
-                    console.log('- A key: Toggle auto-rotate');
+                    console.log('- V key: Toggle Street View');
+                    console.log('- WASD keys: Move in Street View');
                     console.log('- Escape: Close popup');
                     break;
             }
