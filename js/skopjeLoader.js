@@ -24,7 +24,47 @@ export class SkopjeLoader {
         }
         this.windowTexture = new THREE.CanvasTexture(canvas);
         this.windowTexture.wrapS = this.windowTexture.wrapT = THREE.RepeatWrapping;
-        this.windowTexture.repeat.set(4, 2);
+
+        // Create a more detailed window texture
+        const windowCanvas = document.createElement('canvas');
+        windowCanvas.width = 128;
+        windowCanvas.height = 128;
+        const wCtx = windowCanvas.getContext('2d');
+
+        // Building facade background
+        wCtx.fillStyle = '#d4d4d4';
+        wCtx.fillRect(0, 0, 128, 128);
+
+        // Draw windows in a grid pattern
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 4; col++) {
+                const x = col * 32 + 8;
+                const y = row * 32 + 8;
+
+                // Window frame
+                wCtx.fillStyle = '#1a1a1a';
+                wCtx.fillRect(x, y, 16, 20);
+
+                // Glass (with random lights on/off)
+                if (Math.random() > 0.3) {
+                    wCtx.fillStyle = '#ffe680'; // Light on
+                } else {
+                    wCtx.fillStyle = '#2a4a5a'; // Light off
+                }
+                wCtx.fillRect(x + 2, y + 2, 12, 16);
+
+                // Window divider
+                wCtx.strokeStyle = '#1a1a1a';
+                wCtx.lineWidth = 1;
+                wCtx.beginPath();
+                wCtx.moveTo(x + 8, y + 2);
+                wCtx.lineTo(x + 8, y + 18);
+                wCtx.stroke();
+            }
+        }
+
+        this.detailedWindowTexture = new THREE.CanvasTexture(windowCanvas);
+        this.detailedWindowTexture.wrapS = this.detailedWindowTexture.wrapT = THREE.RepeatWrapping;
     }
 
     async loadSkopjeBuildings(url) {
@@ -32,13 +72,13 @@ export class SkopjeLoader {
         const geojson = await response.json();
 
         const bounds = {
-            minLat: 41.988,
-            maxLat: 42.002,
-            minLon: 21.419,
-            maxLon: 21.437
+            minLat: 41.995,
+            maxLat: 42.000,
+            minLon: 21.425,
+            maxLon: 21.432
         };
-        const visualWidth = 2400;
-        const visualHeight = 2400;
+        const visualWidth = 1200;
+        const visualHeight = 1200;
         const scaleFootprint = 0.15;
         const heightFactor = 0.5;
 
@@ -73,29 +113,26 @@ export class SkopjeLoader {
         });
         const centerX = sumX / count, centerZ = sumZ / count;
 
-        for (const { coords, props } of polygons) {
-            // Check if this is a highway/road instead of a building
-            if (props.highway) {
-                // This is a road - create it as a flat strip
-                const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x424242 });
+        // Filter buildings to only show those near the center - SMALLER AREA
+        const maxDistanceFromCenter = 60; // Reduced from 80 to make city more compact
+        const filteredPolygons = polygons.filter(({ coords }) => {
+            // Calculate center of this building
+            let bldgX = 0, bldgZ = 0;
+            coords.forEach(coord => {
+                const { x, z } = geoToXZ(coord[0], coord[1]);
+                bldgX += (x - centerX) * scaleFootprint;
+                bldgZ += (z - centerZ) * scaleFootprint;
+            });
+            bldgX /= coords.length;
+            bldgZ /= coords.length;
 
-                // Create road shape from coordinates
-                const roadShape = new THREE.Shape();
-                coords.forEach((coord, i) => {
-                    const { x, z } = geoToXZ(coord[0], coord[1]);
-                    roadShape[i === 0 ? 'moveTo' : 'lineTo']((x - centerX) * scaleFootprint, (z - centerZ) * scaleFootprint);
-                });
+            const distanceFromCenter = Math.sqrt(bldgX * bldgX + bldgZ * bldgZ);
+            return distanceFromCenter < maxDistanceFromCenter;
+        });
 
-                // Extrude road slightly above ground
-                const roadGeometry = new THREE.ExtrudeGeometry(roadShape, { depth: 0.05, bevelEnabled: false });
-                const road = new THREE.Mesh(roadGeometry, roadMaterial);
-                road.rotation.x = -Math.PI / 2;
-                road.position.y = 0.05;
-                road.receiveShadow = true;
-                this.scene.add(road);
-                continue; // Skip to next feature (don't create as building)
-            }
+        console.log(`Filtered to ${filteredPolygons.length} buildings near center (from ${polygons.length} total)`);
 
+        for (const { coords, props } of filteredPolygons) {
             let height = (7 + Math.random() * 10) * heightFactor;
             if (props.height) height = parseFloat(props.height) * heightFactor || height;
             else if (props["building:levels"]) height = (3 + parseInt(props["building:levels"]) * 3.2) * heightFactor;
@@ -113,26 +150,71 @@ export class SkopjeLoader {
             } else if (props.amenity && [
                 "bar", "cafe", "restaurant", "pub", "nightclub", "disco", "cinema", "theatre", "events_venue"
             ].includes(props.amenity.toLowerCase())) {
-                // Vibrant flat colors for venues (red, yellow, blue)
+                // Vibrant materials for venues with windows
                 const vibrantColors = [0xe53935, 0xfdd835, 0x1e88e5, 0xfb8c00, 0x8e24aa];
                 const color = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
-                material = new THREE.MeshLambertMaterial({ color });
+                material = new THREE.MeshStandardMaterial({
+                    color,
+                    map: this.detailedWindowTexture,
+                    roughness: 0.6,
+                    metalness: 0.1
+                });
             } else if (props.building) {
-                // Simple flat colors for different building types
-                const colorMap = {
-                    apartments: 0x90a4ae,    // Light blue-gray
-                    house: 0xbcaaa4,         // Light brown
-                    school: 0x64b5f6,        // Light blue
-                    church: 0xa1887f,        // Brown
-                    hospital: 0xef5350,      // Red
-                    commercial: 0x9575cd,    // Purple
-                    civic: 0xfff176          // Yellow
+                // Realistic materials for different building types with windows
+                const buildingMaterials = {
+                    apartments: new THREE.MeshStandardMaterial({
+                        color: 0xc8c8c8,
+                        map: this.detailedWindowTexture,
+                        roughness: 0.7,
+                        metalness: 0.2
+                    }),
+                    house: new THREE.MeshLambertMaterial({
+                        color: 0xd4a574,
+                        roughness: 0.8
+                    }),
+                    school: new THREE.MeshStandardMaterial({
+                        color: 0xe8e8e8,
+                        map: this.detailedWindowTexture,
+                        roughness: 0.6,
+                        metalness: 0.1
+                    }),
+                    church: new THREE.MeshLambertMaterial({
+                        color: 0xb8a090,
+                        roughness: 0.9
+                    }),
+                    hospital: new THREE.MeshStandardMaterial({
+                        color: 0xffffff,
+                        map: this.detailedWindowTexture,
+                        roughness: 0.5,
+                        metalness: 0.2
+                    }),
+                    commercial: new THREE.MeshStandardMaterial({
+                        color: 0xb0b0b0,
+                        map: this.detailedWindowTexture,
+                        roughness: 0.4,
+                        metalness: 0.3
+                    }),
+                    civic: new THREE.MeshStandardMaterial({
+                        color: 0xf5f5dc,
+                        map: this.detailedWindowTexture,
+                        roughness: 0.6,
+                        metalness: 0.1
+                    })
                 };
-                const color = colorMap[props.building] || 0xb0bec5; // Default gray
-                material = new THREE.MeshLambertMaterial({ color });
+                material = buildingMaterials[props.building] || new THREE.MeshStandardMaterial({
+                    color: 0xd0d0d0,
+                    map: this.detailedWindowTexture,
+                    roughness: 0.7,
+                    metalness: 0.2
+                });
             } else {
-                // Default light gray
-                material = new THREE.MeshLambertMaterial({ color: 0xb0bec5 });
+                // Default realistic material with windows
+                material = new THREE.MeshStandardMaterial({
+                    color: 0xd0d0d0,
+                    map: this.detailedWindowTexture,
+                    roughness: 0.7,
+                    metalness: 0.2
+                });
             }
 
             const shape = new THREE.Shape();
@@ -184,6 +266,22 @@ export class SkopjeLoader {
                 });
             }
         }
+
+        // Collect building positions for street generation
+        const buildingPositions = [];
+        this.buildingMeshes.forEach(mesh => {
+            buildingPositions.push({
+                x: mesh.position.x,
+                z: mesh.position.z
+            });
+        });
+
+        // Generate streets based on building positions
+        this.generateStreets(buildingPositions, visualWidth, visualHeight, scaleFootprint);
+
+        // Add environmental elements
+        this.addTrees(buildingPositions, visualWidth, visualHeight, scaleFootprint);
+        this.addPeople(buildingPositions, visualWidth, visualHeight, scaleFootprint);
 
         console.log('✅ City loaded! Buildings:', this.buildingMeshes.length);
     }
@@ -337,5 +435,199 @@ export class SkopjeLoader {
     // Get building meshes for collision detection
     getBuildingMeshes() {
         return this.buildingMeshes;
+    }
+
+    // Generate streets based on building positions - SQUARE GRID around perimeter
+    generateStreets(buildingPositions, visualWidth, visualHeight, scaleFootprint) {
+        const streetWidth = 12;
+        const buildingZoneRadius = 60; // Smaller building zone
+
+        // Street material
+        const streetMaterial = new THREE.MeshLambertMaterial({
+            color: 0x2a2a2a,
+            side: THREE.DoubleSide
+        });
+        const markingMaterial = new THREE.MeshLambertMaterial({
+            color: 0xffdd00,
+            side: THREE.DoubleSide
+        });
+
+        // Create SQUARE grid around buildings
+        const innerSize = buildingZoneRadius + 10; // Inner square edge
+        const outerSize = buildingZoneRadius + 50; // Outer square edge
+        const gridSpacing = 40; // Distance between parallel streets
+
+        // Create perimeter square roads (outer boundary)
+        this.createStreetMesh(-outerSize, -outerSize, outerSize, -outerSize, streetWidth, streetMaterial, markingMaterial); // Bottom
+        this.createStreetMesh(-outerSize, outerSize, outerSize, outerSize, streetWidth, streetMaterial, markingMaterial); // Top
+        this.createStreetMesh(-outerSize, -outerSize, -outerSize, outerSize, streetWidth, streetMaterial, markingMaterial); // Left
+        this.createStreetMesh(outerSize, -outerSize, outerSize, outerSize, streetWidth, streetMaterial, markingMaterial); // Right
+
+        // Create inner square roads (around building zone)
+        this.createStreetMesh(-innerSize, -innerSize, innerSize, -innerSize, streetWidth, streetMaterial, markingMaterial); // Bottom
+        this.createStreetMesh(-innerSize, innerSize, innerSize, innerSize, streetWidth, streetMaterial, markingMaterial); // Top
+        this.createStreetMesh(-innerSize, -innerSize, -innerSize, innerSize, streetWidth, streetMaterial, markingMaterial); // Left
+        this.createStreetMesh(innerSize, -innerSize, innerSize, innerSize, streetWidth, streetMaterial, markingMaterial); // Right
+
+        // Create connecting streets (horizontal)
+        for (let z = -outerSize + gridSpacing; z < outerSize; z += gridSpacing) {
+            this.createStreetMesh(-outerSize, z, -innerSize, z, streetWidth, streetMaterial, markingMaterial); // Left side
+            this.createStreetMesh(innerSize, z, outerSize, z, streetWidth, streetMaterial, markingMaterial); // Right side
+        }
+
+        // Create connecting streets (vertical)
+        for (let x = -outerSize + gridSpacing; x < outerSize; x += gridSpacing) {
+            this.createStreetMesh(x, -outerSize, x, -innerSize, streetWidth, streetMaterial, markingMaterial); // Bottom side
+            this.createStreetMesh(x, innerSize, x, outerSize, streetWidth, streetMaterial, markingMaterial); // Top side
+        }
+
+        console.log('✅ Square street grid generated!');
+    }
+
+    // Add trees AROUND the perimeter in square pattern
+    addTrees(buildingPositions, visualWidth, visualHeight, scaleFootprint) {
+        const treeCount = 80;
+        const buildingZoneRadius = 60;
+        const innerBoundary = buildingZoneRadius + 15;
+        const outerBoundary = buildingZoneRadius + 55;
+
+        const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, 3, 8);
+        const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x4a3728 });
+        const foliageGeometry = new THREE.ConeGeometry(2, 4, 8);
+        const foliageMaterial = new THREE.MeshLambertMaterial({ color: 0x2d5016 });
+
+        for (let i = 0; i < treeCount; i++) {
+            // Random position in square perimeter zone
+            const x = (Math.random() - 0.5) * 2 * outerBoundary;
+            const z = (Math.random() - 0.5) * 2 * outerBoundary;
+
+            // Only place if in perimeter zone (outside inner boundary)
+            const distFromCenter = Math.sqrt(x * x + z * z);
+            if (distFromCenter > innerBoundary && distFromCenter < outerBoundary) {
+                // Create trunk
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.set(x, 1.5, z);
+                trunk.castShadow = true;
+                this.scene.add(trunk);
+
+                // Create foliage
+                const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+                foliage.position.set(x, 4.5, z);
+                foliage.castShadow = true;
+                this.scene.add(foliage);
+            }
+        }
+
+        console.log('✅ Trees added around perimeter!');
+    }
+
+    // Add people walking on the square grid streets
+    addPeople(buildingPositions, visualWidth, visualHeight, scaleFootprint) {
+        const peopleCount = 60;
+        const buildingZoneRadius = 60;
+        const streetZone = buildingZoneRadius + 15;
+
+        // Different clothing colors for variety
+        const clothingColors = [
+            0x1a5490, // Blue
+            0x8b4513, // Brown
+            0x2d5016, // Green
+            0x8b0000, // Dark red
+            0x4a4a4a, // Dark gray
+            0x6b4423, // Tan
+            0x000080, // Navy
+            0x800080  // Purple
+        ];
+
+        for (let i = 0; i < peopleCount; i++) {
+            // Random position in perimeter zone
+            const x = (Math.random() - 0.5) * 2 * (streetZone + 30);
+            const z = (Math.random() - 0.5) * 2 * (streetZone + 30);
+
+            // Only place if outside building zone
+            const distFromCenter = Math.sqrt(x * x + z * z);
+            if (distFromCenter > streetZone) {
+                const personGroup = new THREE.Group();
+
+                // Body (cylinder)
+                const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.35, 1.5, 8);
+                const clothingColor = clothingColors[Math.floor(Math.random() * clothingColors.length)];
+                const bodyMaterial = new THREE.MeshLambertMaterial({ color: clothingColor });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.y = 0.75;
+                body.castShadow = true;
+                personGroup.add(body);
+
+                // Head (sphere)
+                const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
+                const skinColor = 0xffdbac; // Skin tone
+                const headMaterial = new THREE.MeshLambertMaterial({ color: skinColor });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 1.75;
+                head.castShadow = true;
+                personGroup.add(head);
+
+                // Legs (two small cylinders)
+                const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 6);
+                const legMaterial = new THREE.MeshLambertMaterial({ color: 0x2c2c2c }); // Dark pants
+
+                const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+                leftLeg.position.set(-0.15, 0.4, 0);
+                leftLeg.castShadow = true;
+                personGroup.add(leftLeg);
+
+                const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+                rightLeg.position.set(0.15, 0.4, 0);
+                rightLeg.castShadow = true;
+                personGroup.add(rightLeg);
+
+                // Random rotation
+                personGroup.rotation.y = Math.random() * Math.PI * 2;
+                personGroup.position.set(x, 0, z);
+
+                this.scene.add(personGroup);
+            }
+        }
+
+        console.log('✅ People added on streets!');
+    }
+
+    // Create a single street segment
+    createStreetMesh(startX, startZ, endX, endZ, width, streetMaterial, markingMaterial) {
+        // Determine if this is a horizontal or vertical street
+        const isHorizontal = Math.abs(endX - startX) > Math.abs(endZ - startZ);
+
+        let length, centerX, centerZ, rotation;
+
+        if (isHorizontal) {
+            length = Math.abs(endX - startX);
+            centerX = (startX + endX) / 2;
+            centerZ = startZ;
+            rotation = 0;
+        } else {
+            length = Math.abs(endZ - startZ);
+            centerX = startX;
+            centerZ = (startZ + endZ) / 2;
+            rotation = Math.PI / 2;
+        }
+
+        // Create main street surface
+        const streetGeometry = new THREE.PlaneGeometry(length, width);
+        const street = new THREE.Mesh(streetGeometry, streetMaterial);
+        street.rotation.x = -Math.PI / 2;
+        street.rotation.z = rotation;
+        street.position.set(centerX, 0.1, centerZ);
+        street.receiveShadow = true;
+        this.scene.add(street);
+
+        // Create center lane marking
+        const markingWidth = 0.3;
+        const markingLength = length * 0.9; // Slightly shorter than street
+        const markingGeometry = new THREE.PlaneGeometry(markingLength, markingWidth);
+        const marking = new THREE.Mesh(markingGeometry, markingMaterial);
+        marking.rotation.x = -Math.PI / 2;
+        marking.rotation.z = rotation;
+        marking.position.set(centerX, 0.11, centerZ); // Slightly above street
+        this.scene.add(marking);
     }
 }
