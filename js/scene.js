@@ -30,8 +30,8 @@ export class SceneManager {
 
         // Create three.js scene with background and fog
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x1a1a2e);
-        this.scene.fog = new THREE.Fog(0x1a1a2e, 50, 150);
+        this.scene.background = new THREE.Color(0x87ceeb); // Light sky blue
+        this.scene.fog = new THREE.Fog(0x87ceeb, 80, 200); // Lighter fog
 
         // Create perspective camera
         this.camera = new THREE.PerspectiveCamera(

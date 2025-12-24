@@ -74,6 +74,28 @@ export class SkopjeLoader {
         const centerX = sumX / count, centerZ = sumZ / count;
 
         for (const { coords, props } of polygons) {
+            // Check if this is a highway/road instead of a building
+            if (props.highway) {
+                // This is a road - create it as a flat strip
+                const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x424242 });
+
+                // Create road shape from coordinates
+                const roadShape = new THREE.Shape();
+                coords.forEach((coord, i) => {
+                    const { x, z } = geoToXZ(coord[0], coord[1]);
+                    roadShape[i === 0 ? 'moveTo' : 'lineTo']((x - centerX) * scaleFootprint, (z - centerZ) * scaleFootprint);
+                });
+
+                // Extrude road slightly above ground
+                const roadGeometry = new THREE.ExtrudeGeometry(roadShape, { depth: 0.05, bevelEnabled: false });
+                const road = new THREE.Mesh(roadGeometry, roadMaterial);
+                road.rotation.x = -Math.PI / 2;
+                road.position.y = 0.05;
+                road.receiveShadow = true;
+                this.scene.add(road);
+                continue; // Skip to next feature (don't create as building)
+            }
+
             let height = (7 + Math.random() * 10) * heightFactor;
             if (props.height) height = parseFloat(props.height) * heightFactor || height;
             else if (props["building:levels"]) height = (3 + parseInt(props["building:levels"]) * 3.2) * heightFactor;
@@ -81,42 +103,36 @@ export class SkopjeLoader {
             let material;
 
             if (props.leisure === "park") {
-                material = new THREE.MeshLambertMaterial({ color: 0x6ab04c });
+                // Bright green for parks
+                material = new THREE.MeshLambertMaterial({ color: 0x7cb342 });
                 height = 0.2;
             } else if (props.amenity === "parking") {
-                material = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
+                // Dark gray for parking
+                material = new THREE.MeshStandardMaterial({ color: 0x424242, roughness: 0.8 });
                 height = 0.1;
             } else if (props.amenity && [
                 "bar", "cafe", "restaurant", "pub", "nightclub", "disco", "cinema", "theatre", "events_venue"
             ].includes(props.amenity.toLowerCase())) {
-                const vibrantColors = [0xff4f81, 0xffd700, 0x66ccff, 0xff9933, 0xcc66ff];
+                // Vibrant flat colors for venues (red, yellow, blue)
+                const vibrantColors = [0xe53935, 0xfdd835, 0x1e88e5, 0xfb8c00, 0x8e24aa];
                 const color = vibrantColors[Math.floor(Math.random() * vibrantColors.length)];
-                material = new THREE.MeshStandardMaterial({
-                    color,
-                    emissive: color,
-                    emissiveIntensity: 0.3,
-                    roughness: 0.4,
-                    metalness: 0.6
-                });
+                material = new THREE.MeshLambertMaterial({ color });
             } else if (props.building) {
+                // Simple flat colors for different building types
                 const colorMap = {
-                    apartments: 0xd1e8e4,
-                    house: 0xf6e2b3,
-                    school: 0x60a8e9,
-                    church: 0xc0a16b,
-                    hospital: 0xf18f8f,
-                    commercial: 0xc2b2e5,
-                    civic: 0xe0d4a8
+                    apartments: 0x90a4ae,    // Light blue-gray
+                    house: 0xbcaaa4,         // Light brown
+                    school: 0x64b5f6,        // Light blue
+                    church: 0xa1887f,        // Brown
+                    hospital: 0xef5350,      // Red
+                    commercial: 0x9575cd,    // Purple
+                    civic: 0xfff176          // Yellow
                 };
-                const color = colorMap[props.building] || 0xb0b0b0;
-                material = new THREE.MeshStandardMaterial({
-                    color,
-                    roughness: 0.4,
-                    metalness: 0.3,
-                    map: this.windowTexture
-                });
+                const color = colorMap[props.building] || 0xb0bec5; // Default gray
+                material = new THREE.MeshLambertMaterial({ color });
             } else {
-                material = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+                // Default light gray
+                material = new THREE.MeshLambertMaterial({ color: 0xb0bec5 });
             }
 
             const shape = new THREE.Shape();
@@ -144,10 +160,12 @@ export class SkopjeLoader {
             // Position label clearly on top of the building
             buildingCenter.y = height + 3.5; // Higher offset for clear visibility
 
-            // 🎈 Add label ONLY for cafes, bars, restaurants, etc.
+            // Add label for cafes, bars, restaurants, etc.
             if (props.name && props.amenity && [
                 "bar", "cafe", "restaurant", "pub", "nightclub", "disco", "cinema", "theatre", "events_venue"
             ].includes(props.amenity.toLowerCase())) {
+
+                // Create and add venue label
                 const sprite = this._createTextLabel(props.name, material.color);
                 sprite.position.copy(buildingCenter);
                 sprite.userData = { billboard: true };
