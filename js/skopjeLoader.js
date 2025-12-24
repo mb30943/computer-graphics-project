@@ -152,6 +152,18 @@ export class SkopjeLoader {
                 sprite.position.copy(buildingCenter);
                 sprite.userData = { billboard: true };
                 this.scene.add(sprite);
+
+                // Store venue position for event markers
+                this.venuePositions.push({
+                    name: props.name,
+                    amenity: props.amenity,
+                    position: {
+                        x: buildingCenter.x,
+                        y: 0, // Ground level for event markers
+                        z: buildingCenter.z
+                    },
+                    height: height
+                });
             }
         }
 
@@ -297,5 +309,15 @@ export class SkopjeLoader {
         this.scene.children.forEach(obj => {
             if (obj.userData.billboard) obj.lookAt(camera.position);
         });
+    }
+
+    // Get all venue positions for event marker placement
+    getVenuePositions() {
+        return this.venuePositions;
+    }
+
+    // Get building meshes for collision detection
+    getBuildingMeshes() {
+        return this.buildingMeshes;
     }
 }

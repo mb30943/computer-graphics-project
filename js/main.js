@@ -90,7 +90,29 @@ class FindzzerApp {
 
     // Create event markers from event data
     createEventMarkers() {
-        eventData.forEach((event) => {
+        // Get venue positions from city loader
+        const cityLoader = this.sceneManager.getCityLoader();
+        const venues = cityLoader ? cityLoader.getVenuePositions() : [];
+
+        console.log(`Found ${venues.length} venues for event placement`);
+
+        // Assign each event to a venue position
+        eventData.forEach((event, index) => {
+            // Use venue position if available, otherwise use original position
+            if (venues.length > 0) {
+                const venueIndex = index % venues.length; // Cycle through venues
+                const venue = venues[venueIndex];
+
+                // Update event position to match venue
+                event.position = {
+                    x: venue.position.x,
+                    y: venue.position.y,
+                    z: venue.position.z
+                };
+
+                console.log(`Event "${event.name}" placed at venue "${venue.name}" (${venue.amenity})`);
+            }
+
             const marker = new EventMarker(event, this.sceneManager.getScene());
             this.eventMarkers.push(marker);
         });

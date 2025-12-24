@@ -66,8 +66,7 @@ export class CameraControls {
     // Setup keyboard controls for WASD movement
     setupKeyboardControls() {
         window.addEventListener('keydown', (e) => {
-            if (!this.isStreetView) return; // Only allow movement in street view
-
+            // Allow WASD movement in both bird's eye and street view modes
             switch (e.key.toLowerCase()) {
                 case 'w':
                     this.moveState.forward = true;
@@ -105,8 +104,10 @@ export class CameraControls {
     // Update controls (call in animation loop)
     update() {
         if (this.controls) {
-            // Handle keyboard movement in street view
-            if (this.isStreetView) {
+            // Handle keyboard movement in both bird's eye and street view
+            if (this.moveState.forward || this.moveState.backward ||
+                this.moveState.left || this.moveState.right) {
+
                 const direction = new THREE.Vector3();
                 const right = new THREE.Vector3();
 
@@ -118,24 +119,44 @@ export class CameraControls {
                 // Get right vector (left/right strafe)
                 right.crossVectors(this.camera.up, direction).normalize();
 
-                // Apply movement based on key states WITH collision detection
-                if (this.moveState.forward && !this.checkCollision(direction)) {
-                    this.camera.position.addScaledVector(direction, this.moveSpeed);
-                }
-                if (this.moveState.backward && !this.checkCollision(direction.clone().negate())) {
-                    this.camera.position.addScaledVector(direction, -this.moveSpeed);
-                }
-                if (this.moveState.left && !this.checkCollision(right)) {
-                    this.camera.position.addScaledVector(right, this.moveSpeed);
-                }
-                if (this.moveState.right && !this.checkCollision(right.clone().negate())) {
-                    this.camera.position.addScaledVector(right, -this.moveSpeed);
-                }
+                // Apply movement based on key states
+                if (this.isStreetView) {
+                    // Street view: use collision detection
+                    if (this.moveState.forward && !this.checkCollision(direction)) {
+                        this.camera.position.addScaledVector(direction, this.moveSpeed);
+                    }
+                    if (this.moveState.backward && !this.checkCollision(direction.clone().negate())) {
+                        this.camera.position.addScaledVector(direction, -this.moveSpeed);
+                    }
+                    if (this.moveState.left && !this.checkCollision(right)) {
+                        this.camera.position.addScaledVector(right, this.moveSpeed);
+                    }
+                    if (this.moveState.right && !this.checkCollision(right.clone().negate())) {
+                        this.camera.position.addScaledVector(right, -this.moveSpeed);
+                    }
 
-                // Update orbit controls target to follow camera
-                if (this.moveState.forward || this.moveState.backward ||
-                    this.moveState.left || this.moveState.right) {
+                    // Update orbit controls target to follow camera
                     this.controls.target.copy(this.camera.position).add(direction);
+                } else {
+                    // Bird's eye view: move camera and target together (pan effect)
+                    const panSpeed = this.moveSpeed * 1.5; // Slightly faster for bird's eye
+
+                    if (this.moveState.forward) {
+                        this.camera.position.addScaledVector(direction, panSpeed);
+                        this.controls.target.addScaledVector(direction, panSpeed);
+                    }
+                    if (this.moveState.backward) {
+                        this.camera.position.addScaledVector(direction, -panSpeed);
+                        this.controls.target.addScaledVector(direction, -panSpeed);
+                    }
+                    if (this.moveState.left) {
+                        this.camera.position.addScaledVector(right, panSpeed);
+                        this.controls.target.addScaledVector(right, panSpeed);
+                    }
+                    if (this.moveState.right) {
+                        this.camera.position.addScaledVector(right, -panSpeed);
+                        this.controls.target.addScaledVector(right, -panSpeed);
+                    }
                 }
             }
 

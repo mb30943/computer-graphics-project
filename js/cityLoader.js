@@ -43,5 +43,10 @@ export class CityLoader {
         return this.skopjeLoader.buildingMeshes;
     }
 
+    // Get venue positions for event marker placement
+    getVenuePositions() {
+        return this.skopjeLoader.getVenuePositions();
+    }
+
     dispose() { }
 }
