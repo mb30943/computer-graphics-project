@@ -57,53 +57,72 @@ export class CityLoader {
         }
     }
 
-    // addCars() {
-    //     // Add simple low-poly cars on the roads
-    //     const carColors = [0xe53935, 0x1e88e5, 0xfdd835, 0x43a047, 0xfb8c00, 0x8e24aa];
 
-    //     // Place cars along roads
-    //     for (let i = 0; i < 15; i++) {
-    //         const color = carColors[Math.floor(Math.random() * carColors.length)];
-    //         const carMaterial = new THREE.MeshLambertMaterial({ color });
+    addStreetLamps() {
+        // Add street lamps around the perimeter for urban atmosphere
+        const lampPositions = [
+            // Around the square perimeter
+            [-80, 0, -80], [80, 0, -80], [-80, 0, 80], [80, 0, 80],
+            [-40, 0, -80], [0, 0, -80], [40, 0, -80],
+            [-40, 0, 80], [0, 0, 80], [40, 0, 80],
+            [-80, 0, -40], [-80, 0, 0], [-80, 0, 40],
+            [80, 0, -40], [80, 0, 0], [80, 0, 40]
+        ];
 
-    //         // Random position on a road
-    //         const onHorizontalRoad = Math.random() > 0.5;
-    //         let x, z;
+        lampPositions.forEach(pos => {
+            this.createStreetLamp(pos[0], pos[1], pos[2]);
+        });
+    }
 
-    //         if (onHorizontalRoad) {
-    //             x = (Math.random() - 0.5) * 80;
-    //             z = Math.floor((Math.random() - 0.5) * 6) * 20; // Snap to road
-    //         } else {
-    //             x = Math.floor((Math.random() - 0.5) * 6) * 20; // Snap to road
-    //             z = (Math.random() - 0.5) * 80;
-    //         }
+    createStreetLamp(x, y, z) {
+        const lampGroup = new THREE.Group();
 
-    //         // Car body
-    //         const bodyGeometry = new THREE.BoxGeometry(2, 1, 4);
-    //         const body = new THREE.Mesh(bodyGeometry, carMaterial);
-    //         body.position.set(x, 0.5, z);
-    //         body.castShadow = true;
+        // Lamp post (tall pole)
+        const poleGeometry = new THREE.CylinderGeometry(0.2, 0.25, 8, 8);
+        const poleMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2c2c2c,
+            roughness: 0.7,
+            metalness: 0.5
+        });
+        const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+        pole.position.y = 4;
+        pole.castShadow = true;
+        lampGroup.add(pole);
 
-    //         // Rotate if on vertical road
-    //         if (!onHorizontalRoad) {
-    //             body.rotation.y = Math.PI / 2;
-    //         }
+        // Lamp head (light housing)
+        const headGeometry = new THREE.CylinderGeometry(0.6, 0.8, 1, 8);
+        const headMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.5,
+            metalness: 0.6
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 8.5;
+        head.castShadow = true;
+        lampGroup.add(head);
 
-    //         this.scene.add(body);
+        // Glowing light bulb
+        const bulbGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const bulbMaterial = new THREE.MeshStandardMaterial({
+            color: 0xfff4e0,
+            emissive: 0xfff4e0,
+            emissiveIntensity: 0.8
+        });
+        const bulb = new THREE.Mesh(bulbGeometry, bulbMaterial);
+        bulb.position.y = 8;
+        lampGroup.add(bulb);
 
-    //         // Car roof (smaller box on top)
-    //         const roofGeometry = new THREE.BoxGeometry(1.5, 0.8, 2.5);
-    //         const roof = new THREE.Mesh(roofGeometry, carMaterial);
-    //         roof.position.set(x, 1.4, z);
-    //         roof.castShadow = true;
+        // Point light from lamp
+        const light = new THREE.PointLight(0xfff4e0, 1.5, 25);
+        light.position.y = 8;
+        light.castShadow = true;
+        light.shadow.mapSize.width = 512;
+        light.shadow.mapSize.height = 512;
+        lampGroup.add(light);
 
-    //         if (!onHorizontalRoad) {
-    //             roof.rotation.y = Math.PI / 2;
-    //         }
-
-    //         this.scene.add(roof);
-    //     }
-    // }
+        lampGroup.position.set(x, y, z);
+        this.scene.add(lampGroup);
+    }
 
     addSkybox() {
         const skyGeometry = new THREE.SphereGeometry(350, 32, 32);

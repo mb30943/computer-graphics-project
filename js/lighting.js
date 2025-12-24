@@ -29,7 +29,7 @@ export class LightingSystem {
         directionalLight.position.set(50, 100, 50);
         directionalLight.castShadow = true;
         directionalLight.name = "directionalLight";
-        
+
         // Shadow configuration for high-quality shadows
         directionalLight.shadow.mapSize.width = 2048;
         directionalLight.shadow.mapSize.height = 2048;
@@ -41,7 +41,7 @@ export class LightingSystem {
         directionalLight.shadow.camera.bottom = -100;
         directionalLight.shadow.bias = -0.0001;
         directionalLight.shadow.blurSamples = 8;
-        
+
         this.lights.directional = directionalLight;
         this.scene.add(directionalLight);
 

@@ -15,22 +15,24 @@ export class EventMarker {
         this.light = null;
         this.isHovered = false;
         this.isSelected = false;
-        this.originalScale = 1;
-        this.pulseAmplitude = 0.2;
+        this.originalScale = 3; // Increased from 1 for better visibility
+        this.pulseAmplitude = 0.3; // Increased animation amplitude
 
         this.createMarker();
         this.addToScene();
     }
 
     createMarker() {
-        // Base platform - cylindrical foundation
-        const baseGeometry = new THREE.CylinderGeometry(0.8, 1, 0.2, 32);
+        // TALL VERTICAL PIN DESIGN for visibility from all angles
+
+        // Base platform - larger and more visible
+        const baseGeometry = new THREE.CylinderGeometry(1.5, 2, 0.4, 32);
         const baseMaterial = new THREE.MeshStandardMaterial({
             color: this.data.color,
             metalness: 0.7,
             roughness: 0.3,
             emissive: this.data.color,
-            emissiveIntensity: 0.2
+            emissiveIntensity: 0.3
         });
         const base = new THREE.Mesh(baseGeometry, baseMaterial);
         base.castShadow = true;
@@ -38,59 +40,72 @@ export class EventMarker {
         base.name = "base";
         this.group.add(base);
 
-        // Glowing sphere marker - main visual element
-        const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+        // Tall pin shaft - makes it visible from bird's eye view
+        const pinGeometry = new THREE.CylinderGeometry(0.3, 0.3, 8, 16);
+        const pinMaterial = new THREE.MeshStandardMaterial({
+            color: this.data.color,
+            metalness: 0.6,
+            roughness: 0.4,
+            emissive: this.data.color,
+            emissiveIntensity: 0.2
+        });
+        this.pinShaft = new THREE.Mesh(pinGeometry, pinMaterial);
+        this.pinShaft.position.y = 4.5; // Tall vertical position
+        this.pinShaft.castShadow = true;
+        this.pinShaft.name = "pinShaft";
+        this.group.add(this.pinShaft);
+
+        // Large glowing sphere at top - main visual element
+        const sphereGeometry = new THREE.SphereGeometry(1.2, 32, 32);
         const sphereMaterial = new THREE.MeshStandardMaterial({
             color: this.data.color,
             emissive: this.data.color,
-            emissiveIntensity: 0.5,
+            emissiveIntensity: 0.6,
             metalness: 0.5,
-            roughness: 0.2,
-            wireframe: false
+            roughness: 0.2
         });
         this.marker = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        this.marker.position.y = 1.5;
+        this.marker.position.y = 9; // Top of the pin
         this.marker.castShadow = true;
         this.marker.receiveShadow = true;
         this.marker.name = "sphere";
         this.group.add(this.marker);
 
-        // Point light for glow effect - attached to sphere
-        this.light = new THREE.PointLight(this.data.color, 2, 10);
-        this.light.position.y = 1.5;
-        this.light.intensity = 2;
+        // Bright point light for glow effect
+        this.light = new THREE.PointLight(this.data.color, 3, 20);
+        this.light.position.y = 9;
+        this.light.intensity = 3;
         this.group.add(this.light);
 
-        // Outer glow ring - animated torus
-        const ringGeometry = new THREE.TorusGeometry(0.7, 0.05, 16, 100);
+        // Large outer glow ring at base - visible from above
+        const ringGeometry = new THREE.TorusGeometry(2, 0.15, 16, 100);
         const ringMaterial = new THREE.MeshBasicMaterial({
             color: this.data.color,
             transparent: true,
-            opacity: 0.6,
-            fog: true
+            opacity: 0.7
         });
         this.ring = new THREE.Mesh(ringGeometry, ringMaterial);
         this.ring.rotation.x = Math.PI / 2;
-        this.ring.position.y = 0.2;
+        this.ring.position.y = 0.3;
         this.ring.name = "ring";
         this.group.add(this.ring);
 
         // Secondary ring for extra visual effect
-        const ringGeometry2 = new THREE.TorusGeometry(0.55, 0.04, 16, 100);
+        const ringGeometry2 = new THREE.TorusGeometry(1.5, 0.12, 16, 100);
         const ringMaterial2 = new THREE.MeshBasicMaterial({
             color: this.data.color,
             transparent: true,
-            opacity: 0.4
+            opacity: 0.5
         });
         this.ring2 = new THREE.Mesh(ringGeometry2, ringMaterial2);
         this.ring2.rotation.x = Math.PI / 2;
         this.ring2.rotation.z = Math.PI / 4;
-        this.ring2.position.y = 0.2;
+        this.ring2.position.y = 0.3;
         this.ring2.name = "ring2";
         this.group.add(this.ring2);
 
-        // Cone indicator - points upward from base
-        const coneGeometry = new THREE.ConeGeometry(0.3, 0.8, 32);
+        // Cone at base pointing upward
+        const coneGeometry = new THREE.ConeGeometry(0.8, 2, 32);
         const coneMaterial = new THREE.MeshStandardMaterial({
             color: this.data.color,
             emissive: this.data.color,
@@ -99,23 +114,23 @@ export class EventMarker {
             roughness: 0.4
         });
         this.cone = new THREE.Mesh(coneGeometry, coneMaterial);
-        this.cone.position.y = 0.6;
+        this.cone.position.y = 1.5;
         this.cone.castShadow = true;
         this.cone.receiveShadow = true;
         this.cone.name = "cone";
         this.group.add(this.cone);
 
-        // Text Label (Sprite)
+        // Text Label (Sprite) - larger and more visible
         this.label = this.createTextLabel(this.data.name);
-        this.label.position.y = 2.5;
+        this.label.position.y = 11; // Above the sphere
         this.label.scale.set(0, 0, 0); // Initially hidden
         this.label.name = "label";
         this.group.add(this.label);
 
-        // Set group position in world space - elevated for visibility
+        // Set group position in world space
         this.group.position.set(
             this.data.position.x,
-            this.data.position.y + 5, // Elevated to appear on top of buildings
+            this.data.position.y + 2, // Slight elevation
             this.data.position.z
         );
 
@@ -178,8 +193,8 @@ export class EventMarker {
         });
 
         const sprite = new THREE.Sprite(material);
-        // Scale sprite based on aspect ratio
-        const scale = 3;
+        // Larger scale for better visibility
+        const scale = 5;
         sprite.scale.set(scale * (canvas.width / canvas.height), scale, 1);
 
         return sprite;
@@ -193,36 +208,38 @@ export class EventMarker {
     animate(time) {
         // Floating animation - vertical oscillation
         const floatHeight = Math.sin(time * 2 + this.data.id) * this.pulseAmplitude;
-        this.marker.position.y = 1.5 + floatHeight;
-        this.cone.position.y = 0.6 + floatHeight * 0.5;
+        this.marker.position.y = 9 + floatHeight;
+        this.pinShaft.position.y = 4.5 + floatHeight * 0.3;
+        this.cone.position.y = 1.5 + floatHeight * 0.2;
 
         // Rotation animation - sphere rotates continuously
         this.marker.rotation.y += 0.01;
         this.marker.rotation.x += 0.005;
 
-        // Pulsating light effect
-        const lightIntensity = 2 + Math.sin(time * 3 + this.data.id) * 0.5;
+        // Pulsating light effect - brighter
+        const lightIntensity = 3 + Math.sin(time * 3 + this.data.id) * 1;
         this.light.intensity = lightIntensity;
+        this.light.position.y = 9 + floatHeight;
 
         // Ring rotation animations
         this.ring.rotation.z += 0.005;
         this.ring2.rotation.z -= 0.008;
 
-        // Cone rotation
-        this.cone.rotation.z += 0.003;
+        // Pin shaft subtle rotation
+        this.pinShaft.rotation.y += 0.002;
 
         // Hover effect with smooth scale interpolation
         if (this.isHovered) {
-            const targetScale = 1.3;
+            const targetScale = 1.4;
             this.marker.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
-            this.light.intensity = Math.min(lightIntensity * 1.5, 4);
-            this.cone.scale.lerp(new THREE.Vector3(1.2, 1.2, 1.2), 0.1);
+            this.light.intensity = Math.min(lightIntensity * 1.5, 6);
+            this.cone.scale.lerp(new THREE.Vector3(1.3, 1.3, 1.3), 0.1);
 
             // Show label
-            const labelTargetScale = 3; // Base height scale
+            const labelTargetScale = 5;
             const aspectRatio = this.label.material.map.image.width / this.label.material.map.image.height;
             this.label.scale.lerp(new THREE.Vector3(labelTargetScale * aspectRatio, labelTargetScale, 1), 0.15);
-            this.label.position.y = 2.5 + floatHeight;
+            this.label.position.y = 11 + floatHeight;
         } else {
             this.marker.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
             this.cone.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
